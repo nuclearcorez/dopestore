@@ -1,0 +1,45 @@
+name: Signed release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Git tag for the release (for example v0.1.0)
+        required: true
+        type: string
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Require signing material and build signed IPA
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          if [[ -z "$APPLE_CERTIFICATE_BASE64" || -z "$APPLE_CERTIFICATE_PASSWORD" || -z "$PROVISIONING_PROFILE_BASE64" || -z "$KEYCHAIN_PASSWORD" || -z "$APPLE_TEAM_ID" ]]; then
+            echo 'Release blocked: signing secrets are incomplete. No unsigned IPA will be published as installable.' >&2
+            exit 1
+          fi
+          ./scripts/build-ipa.sh
+          test -s build/DopeStore-signed.ipa
+          ./scripts/validate-ipa.sh build/DopeStore-signed.ipa signed
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name || github.ref_name }}
+          name: DopeStore ${{ inputs.tag_name || github.ref_name }}
+          generate_release_notes: true
+          files: build/DopeStore-signed.ipa

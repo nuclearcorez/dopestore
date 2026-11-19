@@ -1,0 +1,61 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'DopeStore/**'
+      - 'Tests/**'
+      - 'project.yml'
+      - 'scripts/**'
+      - '.github/workflows/build-ios-ipa.yml'
+
+permissions:
+  contents: read
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode and install XcodeGen
+        run: |
+          xcodebuild -version
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Build and package IPA
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: ./scripts/build-ipa.sh
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DopeStore-IPA-${{ github.run_number }}
+          path: build/*.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Write build summary
+        if: always()
+        run: |
+          echo '## DopeStore build' >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f build/DopeStore-signed.ipa ]]; then
+            echo '- Signed IPA: generated and structurally/signature validated.' >> "$GITHUB_STEP_SUMMARY"
+          elif [[ -f build/DopeStore-unsigned.ipa ]]; then
+            echo '- Unsigned IPA: generated and structurally validated; **not installable until signed**.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '- No IPA was generated.' >> "$GITHUB_STEP_SUMMARY"
+          fi

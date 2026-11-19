@@ -1,0 +1,66 @@
+name: DopeStore
+options:
+  bundleIdPrefix: com.dopestore
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    exactVersion: 0.9.19
+targets:
+  DopeStore:
+    type: application
+    platform: iOS
+    sources:
+      - path: DopeStore
+        excludes:
+          - Info.plist
+          - DopeStore.entitlements
+    dependencies:
+      - package: ZIPFoundation
+        product: ZIPFoundation
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dopestore.app
+        PRODUCT_NAME: DopeStore
+        INFOPLIST_FILE: DopeStore/Info.plist
+        CODE_SIGN_ENTITLEMENTS: DopeStore/DopeStore.entitlements
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_PREVIEWS: YES
+        SUPPORTS_MACCATALYST: NO
+        SKIP_INSTALL: NO
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+  DopeStoreTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: DopeStore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dopestore.app.tests
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DopeStore.app/DopeStore"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  DopeStore:
+    build:
+      targets:
+        DopeStore: all
+        DopeStoreTests: [test]
+    test:
+      targets:
+        - DopeStoreTests

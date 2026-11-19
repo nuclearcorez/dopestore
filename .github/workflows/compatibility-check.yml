@@ -1,0 +1,22 @@
+name: iOS compatibility checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify iOS 16 baseline and workflow controls
+        run: ./scripts/check-compatibility.sh
+      - name: Validate XML property lists
+        run: |
+          plutil -lint DopeStore/Info.plist
+          plutil -lint DopeStore/DopeStore.entitlements

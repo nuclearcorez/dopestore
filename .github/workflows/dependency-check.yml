@@ -1,0 +1,27 @@
+name: Dependency check
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Resolve pinned Swift package dependencies
+        run: |
+          xcodegen generate --spec project.yml
+          xcodebuild -resolvePackageDependencies -project DopeStore.xcodeproj -scheme DopeStore
+      - name: Show resolved package graph
+        run: xcodebuild -resolvePackageDependencies -project DopeStore.xcodeproj -scheme DopeStore -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
+      - name: Verify package version pin
+        run: |
+          grep -q 'exactVersion: 0.9.19' project.yml
